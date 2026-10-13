@@ -3,6 +3,20 @@
 All notable changes to Switchboard are recorded here. Versions follow
 `metadata.json` (`version`), newest first.
 
+## [0.2.0] — 2026-10-12
+
+### Added
+- Wi-Fi page: the Wi-Fi tile's arrow opens a list of nearby networks inside
+  the menu (signal, lock for secured networks, the current one marked),
+  with the Wi-Fi switch at the top and Network Settings at the bottom.
+  Click a network to connect: a saved network connects straight away, a new
+  secured one asks for its password in Cinnamon's own dialog. Enterprise
+  (802.1X) networks open Network Settings to finish the setup. The list
+  scrolls and is refreshed with a scan when the page opens.
+
+### Changed
+- The Wi-Fi arrow strip opens the Wi-Fi page instead of Network Settings.
+
 ## [0.1.1] — 2026-10-12
 
 ### Fixed

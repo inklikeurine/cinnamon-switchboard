@@ -3,6 +3,7 @@
 //   body (fixed height, .switchboard-body)
 //     main page:  brightness row (when available) + two-column tile grid
 //     sub-page:   [‹ Back] / title + master switch / separator / page content
+//                 (Wi-Fi: a scrolling network list above "Network Settings")
 //   separator
 //   footer:     System Settings · battery percentage (when there is a battery)
 //
@@ -34,6 +35,14 @@ function _fill(bin) {
 function _hasFocus(container) {
     const focus = global.stage.key_focus;
     return !!focus && container.contains(focus);
+}
+
+// Keep a focused row of a scrolling list in view (keyboard navigation).
+function _scrollIntoView(scroll, row) {
+    const adj = scroll.vscroll.adjustment;
+    const box = row.get_allocation_box();
+    if (box.y1 < adj.value) adj.value = box.y1;
+    else if (box.y2 > adj.value + adj.page_size) adj.value = box.y2 - adj.page_size;
 }
 
 function _label(text, style) {
@@ -81,6 +90,7 @@ class MenuView {
         this._order = '';
         this._devicesKey = null;
         this._profilesKey = null;
+        this._networksKey = null;
 
         // ── Body ─────────────────────────────────────────────────────────
         this._bodyItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, activate: false, style_class: 'switchboard-body-item' });
@@ -114,7 +124,7 @@ class MenuView {
         this._body.add_child(this._main);
 
         // Sub-page frame.
-        this._sub = new St.BoxLayout({ vertical: true, style_class: 'switchboard-page', x_expand: true, visible: false });
+        this._sub = new St.BoxLayout({ vertical: true, style_class: 'switchboard-page', x_expand: true, y_expand: true, visible: false });
         const backRow = new St.BoxLayout({ style_class: 'switchboard-back-row' });
         this._back = new St.Button({ style_class: 'switchboard-back', can_focus: true, reactive: true, track_hover: true });
         const backBox = new St.BoxLayout({ style_class: 'switchboard-back-box' });
@@ -140,6 +150,18 @@ class MenuView {
         header.add_child(this._masterBtn);
         this._sub.add_child(header);
         this._sub.add_child(new St.Widget({ style_class: 'switchboard-separator', x_expand: true }));
+
+        // Wi-Fi page: the list scrolls inside the fixed body height.
+        this._wifiSection = new St.BoxLayout({ vertical: true, x_expand: true, y_expand: true });
+        this._wifiNote = _label('', 'switchboard-note');
+        this._wifiSection.add_child(this._wifiNote);
+        this._wifiScroll = new St.ScrollView({ style_class: 'switchboard-wifi-scroll', x_expand: true, y_expand: true,
+                                               hscrollbar_policy: St.PolicyType.NEVER, vscrollbar_policy: St.PolicyType.AUTOMATIC });
+        this._networks = new St.BoxLayout({ vertical: true, x_expand: true });
+        this._wifiScroll.add_actor(this._networks);
+        this._wifiSection.add_child(this._wifiScroll);
+        this._wifiSection.add_child(_row('preferences-system-symbolic', _('Network Settings'), () => cb.openNetworkSettings()));
+        this._sub.add_child(this._wifiSection);
 
         // Bluetooth page.
         this._btSection = new St.BoxLayout({ vertical: true, x_expand: true });
@@ -272,16 +294,22 @@ class MenuView {
             this._sub.visible = true;
             if (wasPage !== page.id) this._back.grab_key_focus();
             this._main.visible = false;
+            this._wifiSection.visible = page.id === 'wifi';
             this._btSection.visible = page.id === 'bluetooth';
             this._nightSection.visible = page.id === 'nightlight';
             this._powerSection.visible = page.id === 'power';
             this._pageTitle.text = page.title;
             this._masterBtn.visible = page.master !== null && page.master !== undefined;
             if (this._masterBtn.visible) {
+                const sensitive = page.masterSensitive !== false;
                 this._masterSwitch.setToggleState(!!page.master);
                 this._masterBtn.accessible_name = page.title;
+                this._masterBtn.reactive = sensitive;
+                this._masterBtn.can_focus = sensitive;
+                this._masterBtn.opacity = sensitive ? 255 : 128;
             }
-            if (page.id === 'bluetooth') this._renderBluetooth(page, v);
+            if (page.id === 'wifi') this._renderWifi(page);
+            else if (page.id === 'bluetooth') this._renderBluetooth(page, v);
             else if (page.id === 'nightlight') this._renderNight(page, v);
             else if (page.id === 'power') this._renderPower(page);
         }
@@ -315,6 +343,29 @@ class MenuView {
         const n = box.get_n_children();
         const row = n ? box.get_child_at_index(Math.min(index, n - 1)) : null;
         if (row && row.can_focus) row.grab_key_focus();
+    }
+
+    _renderWifi(page) {
+        this._wifiNote.text = page.note;
+        this._wifiNote.visible = !!page.note;
+        const key = page.networks.map(n => [n.ssid, n.icon, n.secure, n.status].join('|')).join(';');
+        if (key === this._networksKey) return;
+        this._networksKey = key;
+        const focused = this._parkFocus(this._networks);
+        this._networks.destroy_all_children();
+        for (const n of page.networks) {
+            const row = _row(n.icon, n.name, () => this._cb.onNetwork(n.ssid));
+            if (n.status) row._box.add_child(_label(n.status, 'switchboard-network-status'));
+            if (n.secure) {
+                row._box.add_child(new St.Icon({ icon_name: 'network-wireless-encrypted-symbolic', icon_type: St.IconType.SYMBOLIC,
+                                                 style_class: 'popup-menu-icon', y_align: Clutter.ActorAlign.CENTER }));
+            }
+            if (n.active) row.add_style_pseudo_class('checked');
+            row.accessible_name = n.name + (n.status ? ', ' + n.status : '');
+            row.connect('key-focus-in', () => _scrollIntoView(this._wifiScroll, row));
+            this._networks.add_child(row);
+        }
+        this._restoreFocus(this._networks, focused);
     }
 
     _renderBluetooth(page, v) {

@@ -6,7 +6,8 @@
 // backend itself.
 //
 // Input `s` (every part optional; a missing part means "not available"):
-//   wifi:  { available, present, enabled, hwEnabled, ssid, wired }
+//   wifi:  { available, present, enabled, hwEnabled, ssid, wired,
+//            networks: [{ ssid, strength, security, active, connecting, known }] (Wi-Fi page only) }
 //   bt:    { available, powered, blocked, devices: [{ path, name, icon, connected }] }
 //   night: { available, enabled, active, paused, until, temperature }
 //   dnd:   { available, active }
@@ -33,7 +34,19 @@ var PROFILE_ICONS = {
     'performance': 'power-profile-performance-symbolic'
 };
 
+var MAX_NETWORKS = 30;
+
 function _id(x) { return x; }
+
+// Signal strength 0–100 → icon, with the thresholds of Cinnamon's network applet.
+function signalIcon(strength) {
+    let level = 'none';
+    if (strength > 80) level = 'excellent';
+    else if (strength > 55) level = 'good';
+    else if (strength > 30) level = 'ok';
+    else if (strength > 5) level = 'weak';
+    return 'network-wireless-signal-' + level + '-symbolic';
+}
 
 // The `tiles` setting → [{ id, enabled }] in the user's order. Unknown names
 // are dropped; tiles missing from the setting are appended, shown.
@@ -82,7 +95,7 @@ function tile(id, s, _) {
         else if (w.wired) status = _('Wired');
         else status = _('Not connected');
         return { id, title: _('Wi-Fi'), status, icon: on ? 'network-wireless-signal-excellent-symbolic' : 'network-wireless-offline-symbolic',
-                 checked: on, sensitive: hw, arrow: 'launch', launch: 'cinnamon-settings network' };
+                 checked: on, sensitive: hw, arrow: 'page' };
     }
     if (id === 'bluetooth') {
         const b = s.bt;
@@ -173,10 +186,28 @@ function tooltip(s, _) {
     return parts.length ? parts.join(' · ') : _('Switchboard');
 }
 
-// Page models. `page` is 'bluetooth' | 'nightlight' | 'power'.
+// Page models. `page` is 'wifi' | 'bluetooth' | 'nightlight' | 'power'.
 function page(id, s, _) {
     _ = _ || _id;
     s = s || {};
+    if (id === 'wifi' && s.wifi && s.wifi.available && s.wifi.present) {
+        const w = s.wifi;
+        const hw = w.hwEnabled !== false;
+        const on = hw && !!w.enabled;
+        const nets = on ? (w.networks || []).slice(0, MAX_NETWORKS) : [];
+        let note = '';
+        if (!hw) note = _('Wi-Fi is off at the hardware switch.');
+        else if (!on) note = _('Turn Wi-Fi on to see networks.');
+        else if (!nets.length) note = _('Looking for networks…');
+        return {
+            id, title: _('Wi-Fi'), master: on, masterSensitive: hw, note,
+            networks: nets.map(n => ({
+                ssid: n.ssid, name: n.ssid, icon: signalIcon(n.strength), secure: !!n.security && n.security !== 'none',
+                active: !!n.active, connecting: !!n.connecting,
+                status: n.connecting ? _('Connecting…') : (n.active ? _('Connected') : '')
+            }))
+        };
+    }
     if (id === 'bluetooth' && s.bt && s.bt.available) {
         const b = s.bt;
         const on = !!b.powered && !b.blocked;

@@ -6,10 +6,10 @@ a single menu, with a brightness slider on laptops and the battery level at
 the bottom.
 
 Click a tile to switch it on or off. Tiles with more to offer have an arrow
-strip on their right edge: for Bluetooth, Night Light and Power Mode it opens
-a page inside the menu (paired devices, colour temperature, the list of power
-modes), with a Back button at the top; for Wi-Fi and Do Not Disturb it opens
-the matching page of System Settings. The menu is always the same size, so
+strip on their right edge: for Wi-Fi, Bluetooth, Night Light and Power Mode
+it opens a page inside the menu (nearby networks, paired devices, colour
+temperature, the list of power modes), with a Back button at the top; for Do
+Not Disturb it opens the matching page of System Settings. The menu is always the same size, so
 the Back button and the footer never move.
 
 ## Features
@@ -17,6 +17,9 @@ the Back button and the footer never move.
 - Two-column tile grid: Wi-Fi, Bluetooth, Night Light, Do Not Disturb, Power
   Mode and Keep Awake, each with a one-line status ("MyNetwork", "1
   connected", "On until 06:00", "Held by Videos" …)
+- Wi-Fi page: nearby networks with signal strength and a lock for secured
+  ones, the current one marked; click one to connect (a new secured network
+  asks for its password in Cinnamon's own dialog); Network Settings below
 - Bluetooth page: turn Bluetooth on or off, connect or disconnect paired
   devices, open Bluetooth Settings; a blocked adapter is unblocked when you
   turn Bluetooth on
@@ -77,7 +80,12 @@ Source: <https://github.com/inklikeurine/cinnamon-applets/tree/main/switchboard@
 
 - Runtime data: none. Nothing is written to disk; Keep Awake's inhibitor is
   released when the applet is removed or reloaded.
-- Network requests: none.
+- Network requests: none of its own. Opening the Wi-Fi page asks
+  NetworkManager for a Wi-Fi scan (at most once every 10 seconds).
+- Wi-Fi: hidden networks are not listed, and enterprise (802.1X) networks
+  are set up in Network Settings; both are one click away at the bottom of
+  the Wi-Fi page. A network you connect to for the first time is saved by
+  NetworkManager like any other.
 - Switchboard does not replace the built-in Network, Sound, Night Light or
   Notifications applets; you can keep them or remove the ones it makes
   redundant. Volume is left to the sound applet.

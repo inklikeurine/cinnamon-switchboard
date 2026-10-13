@@ -96,6 +96,7 @@ class SwitchboardApplet extends Applet.IconApplet {
             onBack: () => this._showPage(null),
             onMaster: id => this._toggle(id),
             onDevice: (path, on) => this._bt.setDeviceConnected(path, on),
+            onNetwork: ssid => this._connectNetwork(ssid),
             onBrightness: p => this._brightness.set(p),
             onTemperature: k => { if (this._night) this._night.setTemperature(k); },
             onPause: () => this._togglePause(),
@@ -103,6 +104,7 @@ class SwitchboardApplet extends Applet.IconApplet {
             onAccentChanged: () => this._refresh(),
             openBluetoothSettings: () => this._launch('blueman-manager'),
             openNightLightSettings: () => this._launch('cinnamon-settings nightlight'),
+            openNetworkSettings: () => this._launch('cinnamon-settings network'),
             openSystemSettings: () => this._launch('cinnamon-settings')
         }, _);
 
@@ -152,7 +154,7 @@ class SwitchboardApplet extends Applet.IconApplet {
     _state() {
         const nl = this._night, pp = this._power;
         return {
-            wifi: this._net.state,
+            wifi: this._page === 'wifi' ? Object.assign({}, this._net.state, { networks: this._net.networks() }) : this._net.state,
             bt: this._bt.state,
             night: nl && nl.available ? {
                 available: true, enabled: nl.enabled, active: nl.active, paused: nl.pausedUntilTomorrow,
@@ -184,6 +186,7 @@ class SwitchboardApplet extends Applet.IconApplet {
 
     _showPage(id) {
         this._page = id;
+        if (id === 'wifi') this._net.scan();
         this._refresh();
     }
 
@@ -218,6 +221,18 @@ class SwitchboardApplet extends Applet.IconApplet {
         if (!t) return;
         if (t.arrow === 'page') this._showPage(id);
         else if (t.arrow === 'launch') this._launch(t.launch);
+    }
+
+    // A click on a network: nothing for the current one, cinnamon-settings for
+    // an 802.1X network that has no saved connection, else connect.
+    _connectNetwork(ssid) {
+        const n = this._net.networks().find(x => x.ssid === ssid);
+        if (!n || n.active || n.connecting) return;
+        const r = this._net.connectTo(ssid);
+        if (r && r.launch) {
+            this._menu.close();
+            Util.spawn(r.launch);
+        }
     }
 
     _togglePause() {

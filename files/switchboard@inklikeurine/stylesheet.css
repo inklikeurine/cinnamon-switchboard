@@ -152,3 +152,11 @@
 .switchboard-battery {
     spacing: 6px;
 }
+
+.switchboard-network-status {
+    font-size: 0.88em;
+}
+
+.popup-menu-item.switchboard-row:checked {
+    font-weight: bold;
+}

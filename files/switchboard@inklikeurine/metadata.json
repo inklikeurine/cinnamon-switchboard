@@ -2,7 +2,7 @@
   "uuid": "switchboard@inklikeurine",
   "name": "Switchboard",
   "description": "Quick settings menu with Wi-Fi, Bluetooth, Night Light, Do Not Disturb, power mode and Keep Awake toggles",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "cinnamon-version": ["6.6"],
   "max-instances": 1
 }
