@@ -1,0 +1,67 @@
+{
+  "layout": {
+    "type": "layout",
+    "pages": ["page-menu", "page-shortcuts"],
+    "page-menu": {
+      "type": "page",
+      "title": "Menu",
+      "sections": ["section-tiles", "section-menu"]
+    },
+    "page-shortcuts": {
+      "type": "page",
+      "title": "Shortcuts",
+      "sections": ["section-keys"]
+    },
+    "section-tiles": {
+      "type": "section",
+      "title": "Tiles",
+      "keys": ["tiles", "tiles-note"]
+    },
+    "section-menu": {
+      "type": "section",
+      "title": "Menu",
+      "keys": ["show-brightness", "nightlight-temperature-slider"]
+    },
+    "section-keys": {
+      "type": "section",
+      "title": "Keyboard shortcuts",
+      "keys": ["key-open"]
+    }
+  },
+  "tiles": {
+    "type": "list",
+    "description": "Tiles",
+    "columns": [
+      { "id": "tile", "title": "Tile", "type": "string" },
+      { "id": "enabled", "title": "Show", "type": "boolean" }
+    ],
+    "hidden-buttons": ["+", "-", "edit"],
+    "default": [
+      { "tile": "Wi-Fi", "enabled": true },
+      { "tile": "Bluetooth", "enabled": true },
+      { "tile": "Night Light", "enabled": true },
+      { "tile": "Do Not Disturb", "enabled": true },
+      { "tile": "Power Mode", "enabled": true },
+      { "tile": "Keep Awake", "enabled": true }
+    ]
+  },
+  "tiles-note": {
+    "type": "label",
+    "description": "Order here is the order in the menu, left to right, then top to bottom. Tiles for hardware or services this computer doesn't have are hidden automatically."
+  },
+  "show-brightness": {
+    "type": "switch",
+    "default": true,
+    "description": "Show the brightness slider when the screen supports it"
+  },
+  "nightlight-temperature-slider": {
+    "type": "switch",
+    "default": true,
+    "description": "Show the colour temperature slider on the Night Light page"
+  },
+  "key-open": {
+    "type": "keybinding",
+    "default": "<Super>s",
+    "description": "Open the Switchboard menu"
+  }
+}
