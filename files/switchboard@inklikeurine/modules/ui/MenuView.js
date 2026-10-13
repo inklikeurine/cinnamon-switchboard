@@ -27,6 +27,15 @@ function _fill(bin) {
     try { bin.x_fill = true; bin.y_fill = true; } catch (e) { /* property not in this St */ }
 }
 
+// Clutter clears the stage's key focus when the focused actor is hidden or
+// destroyed, and Cinnamon's PopupMenuManager closes the menu as soon as the
+// focus is nowhere (popupMenu.js, _onKeyFocusChanged). Focus is therefore
+// moved out of anything before it is hidden or rebuilt.
+function _hasFocus(container) {
+    const focus = global.stage.key_focus;
+    return !!focus && container.contains(focus);
+}
+
 function _label(text, style) {
     const l = new St.Label({ text: text || '', style_class: style || '', y_align: Clutter.ActorAlign.CENTER });
     l.clutter_text.ellipsize = Pango.EllipsizeMode.END;
@@ -250,16 +259,22 @@ class MenuView {
         if (v.brightness.visible && !this._brightSlider._dragging)
             this._brightSlider.setValue(Math.max(0, Math.min(1, v.brightness.percent / 100)));
 
-        // Page.
+        // Page. The page being shown is made visible first and takes the
+        // focus; only then is the other one hidden (see _hasFocus).
         const page = v.page;
         const wasPage = this._pageId;
         this._pageId = page ? page.id : null;
-        this._main.visible = !page;
-        this._sub.visible = !!page;
-        this._btSection.visible = !!page && page.id === 'bluetooth';
-        this._nightSection.visible = !!page && page.id === 'nightlight';
-        this._powerSection.visible = !!page && page.id === 'power';
-        if (page) {
+        if (!page) {
+            this._main.visible = true;
+            if (this._menu.isOpen && _hasFocus(this._sub)) this._focusTile(wasPage);
+            this._sub.visible = false;
+        } else {
+            this._sub.visible = true;
+            if (wasPage !== page.id) this._back.grab_key_focus();
+            this._main.visible = false;
+            this._btSection.visible = page.id === 'bluetooth';
+            this._nightSection.visible = page.id === 'nightlight';
+            this._powerSection.visible = page.id === 'power';
             this._pageTitle.text = page.title;
             this._masterBtn.visible = page.master !== null && page.master !== undefined;
             if (this._masterBtn.visible) {
@@ -269,13 +284,37 @@ class MenuView {
             if (page.id === 'bluetooth') this._renderBluetooth(page, v);
             else if (page.id === 'nightlight') this._renderNight(page, v);
             else if (page.id === 'power') this._renderPower(page);
-            if (wasPage !== page.id) this._back.grab_key_focus();
         }
 
         // Footer battery: always shown when the computer has a battery.
         this._battery.visible = !!v.battery.text;
         this._batteryLabel.text = v.battery.text;
         this._batteryIcon.icon_name = v.battery.icon || 'battery-good-symbolic';
+    }
+
+    // Back: focus returns to the tile that opened the page, or to the menu.
+    _focusTile(id) {
+        const tile = id ? this._tiles.get(id) : null;
+        const target = tile ? tile.focusTarget() : null;
+        (target || this._menu.actor).grab_key_focus();
+    }
+
+    // Before a row list is rebuilt: if it holds the focus, park the focus on
+    // the menu and return the focused row's position, else -1.
+    _parkFocus(box) {
+        if (!_hasFocus(box)) return -1;
+        const focus = global.stage.key_focus;
+        const index = box.get_children().findIndex(c => c.contains(focus));
+        this._menu.actor.grab_key_focus();
+        return index;
+    }
+
+    // After the rebuild: focus the row now at that position (or the last one).
+    _restoreFocus(box, index) {
+        if (index < 0) return;
+        const n = box.get_n_children();
+        const row = n ? box.get_child_at_index(Math.min(index, n - 1)) : null;
+        if (row && row.can_focus) row.grab_key_focus();
     }
 
     _renderBluetooth(page, v) {
@@ -285,6 +324,7 @@ class MenuView {
         const key = page.devices.map(d => d.path + '|' + d.name + '|' + d.connected + '|' + d.sensitive).join(';');
         if (key === this._devicesKey) return;
         this._devicesKey = key;
+        const focused = this._parkFocus(this._btDevices);
         this._btDevices.destroy_all_children();
         for (const d of page.devices) {
             const row = _row(d.icon, d.name, () => this._cb.onDevice(d.path, !d.connected));
@@ -296,6 +336,7 @@ class MenuView {
             row.accessible_name = d.name;
             this._btDevices.add_child(row);
         }
+        this._restoreFocus(this._btDevices, focused);
     }
 
     _renderNight(page, v) {
@@ -317,6 +358,7 @@ class MenuView {
         const key = page.profiles.map(p => p.id + (p.active ? '*' : '')).join(',');
         if (key === this._profilesKey) return;
         this._profilesKey = key;
+        const focused = this._parkFocus(this._profiles);
         this._profiles.destroy_all_children();
         for (const p of page.profiles) {
             const row = _row(null, p.name, () => this._cb.onProfile(p.id));
@@ -325,6 +367,7 @@ class MenuView {
             row.accessible_name = p.name + (p.active ? ', ' + this._('selected') : '');
             this._profiles.add_child(row);
         }
+        this._restoreFocus(this._profiles, focused);
     }
 
     destroy() {

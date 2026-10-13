@@ -76,6 +76,12 @@ class Tile {
         this._main.accessible_name = model.title + ', ' + model.status;
     }
 
+    // Where keyboard focus returns when this tile's page is closed.
+    focusTarget() {
+        if (this._arrow.visible) return this._arrow;
+        return this._main.can_focus ? this._main : null;
+    }
+
     destroy() {
         this.actor.destroy();
         this._model = null;

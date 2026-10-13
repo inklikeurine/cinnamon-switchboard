@@ -67,19 +67,41 @@ class Bluetooth {
         return out;
     }
 
+    // Paired devices grouped by Address. A device paired with two adapters
+    // is one Device1 object per adapter (/org/bluez/hci0/dev_…, hci1/dev_…)
+    // and must show once. Each group lists the connected copy first, then
+    // copies on a powered adapter.
+    _pairedByAddress() {
+        const powered = new Set(this._proxies(ADAPTER).filter(a => _prop(a, 'Powered') === true)
+            .map(a => a.get_object_path()));
+        const rank = d => (_prop(d, 'Connected') === true ? 0 : powered.has(_prop(d, 'Adapter')) ? 1 : 2);
+        const groups = new Map();
+        for (const d of this._proxies(DEVICE)) {
+            if (_prop(d, 'Paired') !== true) continue;
+            const key = String(_prop(d, 'Address') || d.get_object_path());
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(d);
+        }
+        for (const copies of groups.values())
+            copies.sort((a, b) => rank(a) - rank(b) || a.get_object_path().localeCompare(b.get_object_path()));
+        return [...groups.values()];
+    }
+
     get state() {
         const adapters = this._proxies(ADAPTER);
         if (this._destroyed || adapters.length === 0) return { available: false };
         const powered = adapters.some(a => _prop(a, 'Powered') === true);
         const blocked = !powered && adapters.some(a => _prop(a, 'PowerState') === 'off-blocked');
-        const devices = this._proxies(DEVICE)
-            .filter(d => _prop(d, 'Paired') === true)
-            .map(d => ({
-                path: d.get_object_path(),
-                name: String(_prop(d, 'Alias') || _prop(d, 'Name') || d.get_object_path()),
-                icon: String(_prop(d, 'Icon') || 'bluetooth') + '-symbolic',
-                connected: _prop(d, 'Connected') === true
-            }))
+        const devices = this._pairedByAddress()
+            .map(copies => {
+                const d = copies[0];
+                return {
+                    path: d.get_object_path(),
+                    name: String(_prop(d, 'Alias') || _prop(d, 'Name') || d.get_object_path()),
+                    icon: String(_prop(d, 'Icon') || 'bluetooth') + '-symbolic',
+                    connected: copies.some(c => _prop(c, 'Connected') === true)
+                };
+            })
             .sort((a, b) => a.name.localeCompare(b.name));
         return { available: true, powered, blocked, devices };
     }
@@ -123,11 +145,24 @@ class Bluetooth {
         if (this._destroyed) throw new Error('removed');
     }
 
-    setDeviceConnected(path, on) {
-        const dev = this._proxies(DEVICE).find(d => d.get_object_path() === path);
-        if (!dev) return Promise.resolve();
-        return _call(dev, on ? 'Connect' : 'Disconnect', null, 30000)
-            .catch(e => global.logWarning('[switchboard] Bluetooth ' + (on ? 'connect' : 'disconnect') + ' failed: ' + e.message));
+    // `path` is any copy of the device (see _pairedByAddress). Disconnect
+    // drops every connected copy; connect tries the copies in order until
+    // one adapter succeeds.
+    async setDeviceConnected(path, on) {
+        const copies = this._pairedByAddress().find(list => list.some(d => d.get_object_path() === path));
+        if (!copies) return;
+        const warn = e => global.logWarning('[switchboard] Bluetooth ' + (on ? 'connect' : 'disconnect') + ' failed: ' + e.message);
+        if (!on) {
+            await Promise.all(copies.filter(d => _prop(d, 'Connected') === true)
+                .map(d => _call(d, 'Disconnect', null, 30000).catch(warn)));
+            return;
+        }
+        let last = null;
+        for (const d of copies) {
+            if (this._destroyed) return;
+            try { await _call(d, 'Connect', null, 30000); return; } catch (e) { last = e; }
+        }
+        if (last) warn(last);
     }
 
     destroy() {

@@ -3,6 +3,18 @@
 All notable changes to Switchboard are recorded here. Versions follow
 `metadata.json` (`version`), newest first.
 
+## [0.1.1] — 2026-10-12
+
+### Fixed
+- Back (and Escape) on a page closed the whole menu instead of returning to
+  the tiles. Keyboard focus now moves to the tile that opened the page before
+  the page is hidden. The same fix keeps the menu open when a focused tile
+  arrow opens its page, and when the power-mode or Bluetooth device list is
+  rebuilt under the keyboard focus.
+- A Bluetooth device paired with two adapters was listed twice (once
+  connected, once not). It is listed once now; connecting tries each adapter
+  it is paired with, disconnecting drops every connection.
+
 ## [0.1.0] — 2026-10-13
 
 ### Added
