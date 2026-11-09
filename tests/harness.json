@@ -1,0 +1,37 @@
+{
+  "tests": true,
+  "live": true,
+  "wait": 4,
+  "shared": [
+    "Spawn",
+    "DBusProxy",
+    "Dnd",
+    "Inhibitors",
+    "PowerProfiles",
+    "NightLight"
+  ],
+  "pre": [
+    "(globalThis.__sbPrev = imports.ui.appletManager.getRunningInstancesForUuid('switchboard@inklikeurine')[0]) instanceof Object"
+  ],
+  "evals": [
+    "imports.ui.appletManager.getRunningInstancesForUuid('switchboard@inklikeurine').length === 1",
+    "imports.ui.appletManager.getRunningInstancesForUuid('switchboard@inklikeurine')[0] !== globalThis.__sbPrev",
+    "globalThis.__sbPrev._destroyed === true && globalThis.__sbPrev._refreshId === 0 && globalThis.__sbPrev._signals.length === 0 && globalThis.__sbPrev._settings === null",
+    "globalThis.__sbPrev._awake._cookie === 0 && globalThis.__sbPrev._power === null && globalThis.__sbPrev._night === null",
+    "(function(){ const a = imports.ui.appletManager.getRunningInstancesForUuid('switchboard@inklikeurine')[0]; return a._view._grid.get_n_children() >= 2 && a._view._tiles.has('dnd'); })()",
+    "(function(){ const a = imports.ui.appletManager.getRunningInstancesForUuid('switchboard@inklikeurine')[0]; a._menu.open(false); return a._menu.isOpen === true && a._view._accent !== null; })()",
+    "(function(){ const a = imports.ui.appletManager.getRunningInstancesForUuid('switchboard@inklikeurine')[0]; const h = a._view._body.height; a._showPage('nightlight'); const same = a._view._body.height === h && a._view._sub.visible === true; a._showPage(null); return same && a._view._main.visible === true; })()",
+    "(function(){ const a = imports.ui.appletManager.getRunningInstancesForUuid('switchboard@inklikeurine')[0]; if (!a._view._tiles.has('nightlight')) return true; a._showPage('nightlight'); const onBack = global.stage.key_focus === a._view._back; a._view._back.emit('clicked', 1); return onBack && a._page === null && a._menu.isOpen === true && global.stage.key_focus === a._view._tiles.get('nightlight').focusTarget(); })()",
+    "(function(){ const a = imports.ui.appletManager.getRunningInstancesForUuid('switchboard@inklikeurine')[0]; if (!a._view._tiles.has('nightlight')) return true; const arrow = a._view._tiles.get('nightlight').focusTarget(); arrow.grab_key_focus(); arrow.emit('clicked', 1); const ok = a._menu.isOpen === true && a._page === 'nightlight' && global.stage.key_focus === a._view._back; a._showPage(null); return ok && a._menu.isOpen === true; })()",
+    "(function(){ const a = imports.ui.appletManager.getRunningInstancesForUuid('switchboard@inklikeurine')[0]; if (!a._power || !a._power.available) return true; a._showPage('power'); const row = a._view._profiles.get_child_at_index(0); row.grab_key_focus(); a._view._profilesKey = null; a._refresh(); const now = a._view._profiles.get_child_at_index(0); const ok = now !== row && global.stage.key_focus === now && a._menu.isOpen === true; a._showPage(null); return ok && a._menu.isOpen === true; })()",
+    "(function(){ const a = imports.ui.appletManager.getRunningInstancesForUuid('switchboard@inklikeurine')[0]; const s = a._bt.state; if (!s.available) return true; const val = (d, n) => { const v = d.get_cached_property(n); return v ? v.deepUnpack() : undefined; }; const addrs = new Set(a._bt._proxies('org.bluez.Device1').filter(d => val(d, 'Paired') === true).map(d => val(d, 'Address') || d.get_object_path())); return s.devices.length === addrs.size; })()",
+    "(function(){ const a = imports.ui.appletManager.getRunningInstancesForUuid('switchboard@inklikeurine')[0]; const s = a._net.state; if (!a._view._tiles.has('wifi') || !s.present) return true; a._showPage('wifi'); const nets = a._net.networks(); const on = !!s.enabled && s.hwEnabled !== false; const rows = a._view._networks.get_n_children(); const ok = a._page === 'wifi' && a._view._wifiSection.visible === true && a._menu.isOpen === true && rows === (on ? Math.min(nets.length, 30) : 0) && (!on || !s.ssid || nets[0].ssid === s.ssid); a._showPage(null); return ok && a._menu.isOpen === true; })()",
+    "(function(){ const a = imports.ui.appletManager.getRunningInstancesForUuid('switchboard@inklikeurine')[0]; if (!a._view._tiles.has('wifi') || !a._net.state.present) return true; const h = a._view._body.height; a._showPage('wifi'); const same = a._view._body.height === h; a._showPage(null); return same; })()",
+    "(function(){ const a = imports.ui.appletManager.getRunningInstancesForUuid('switchboard@inklikeurine')[0]; a._menu.close(false); return a._menu.isOpen === false && a._page === null; })()"
+  ],
+  "screenshot": false,
+  "post": [
+    "imports.ui.appletManager.getRunningInstancesForUuid('switchboard@inklikeurine').length === 0",
+    "globalThis.__sbPrev._awake._cookie === 0"
+  ]
+}
